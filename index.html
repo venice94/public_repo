@@ -1,0 +1,76 @@
+<html>
+    <head>
+        <title>To-Do App</title>
+        <style>
+            .hidden {
+                display:none;
+            }
+        </style>
+    </head>
+
+    <!--ul stands for unordered list, and we want the list to come from our DB
+    we define a variable called data in the main application script which will be used in the loop below.-->
+    <body>
+        <!--"/create-todo" is the name of the route, and post is the route method.
+        Post method sends the fields in the request body while Get method sends the fields as url parameters.-->
+        <form id='form'>
+            <div>
+                <label for="name">Create a To Do Item</label>
+                <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
+            </div>
+            <div>
+                <label for="name">Description</label>
+                <input type="text" id='description' name="description">
+            </div>
+            <div>
+                <input type="submit" id="submit" value="Create">
+            </div>
+        </form>
+        <script>
+            const titleInput=document.getElementById('title');
+            const descInput=document.getElementById('description');
+            document.getElementById('form').onsubmit=function(e){
+                if (titleInput.value == ""){
+                    document.getElementById('empty').className="";
+                }
+                else {
+                    e.preventDefault();
+                    document.getElementById('empty').className="hidden";
+                    const desc = descInput.value;
+                    const title = titleInput.value;
+                    descInput.value='';
+                    titleInput.value='';
+                    
+                    fetch('/create-todo',{
+                        method:'POST',
+                        body:JSON.stringify({
+                            'title':title,
+                            'description':desc
+                        }),
+                        headers:{
+                            'Content-Type':'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(jsonResponse => {
+                        console.log(jsonResponse);
+                        const liItem=document.createElement('LI');
+                        liItem.innerHTML=jsonResponse['title'];
+                        document.getElementById('todos').appendChild(liItem);
+                        document.getElementById('error').className="hidden";
+                    })
+                    .catch(function(){
+                        document.getElementById('error').className="";
+                    })
+                }
+            }
+        </script>
+        <div id="error" class="hidden">Something went wrong!</div>
+        <div id="empty" class="hidden">No title entered.</div>
+        <ul id="todos">
+            {% for d in data %}
+            <li>{{ d.title }}</li>
+            {% endfor %}
+        </ul>
+    </body>
+</html>
