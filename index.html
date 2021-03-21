@@ -13,7 +13,7 @@
     <body>
         <!--"/create-todo" is the name of the route, and post is the route method.
         Post method sends the fields in the request body while Get method sends the fields as url parameters.-->
-        <form id='form'>
+        <form id="form" onsubmit="return checkForm();">
             <div>
                 <label for="name">Create a To Do Item</label>
                 <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
@@ -30,10 +30,6 @@
             const titleInput=document.getElementById('title');
             const descInput=document.getElementById('description');
             document.getElementById('form').onsubmit=function(e){
-                if (titleInput.value == ""){
-                    document.getElementById('empty').className="";
-                }
-                else {
                     e.preventDefault();
                     document.getElementById('empty').className="hidden";
                     const desc = descInput.value;
@@ -62,6 +58,25 @@
                     .catch(function(){
                         document.getElementById('error').className="";
                     })
+                }
+        </script>
+        <script>
+            const form = document.getElementById('form');
+            if (!form.addEventListener) {
+                form.attachEvent("onsubmit", checkForm);
+            }
+            else {
+                form.addEventListener("submit", checkForm, false);
+            }
+            function checkForm(e) { 
+                if(document.getElementById('title').value.length == 0) {
+                    e.preventDefault();
+                    document.getElementById('empty').className="";
+                    return false;
+                }
+                else {
+                    document.getElementById('empty').className="hidden";
+                    return true;
                 }
             }
         </script>
