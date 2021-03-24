@@ -15,7 +15,7 @@
         Post method sends the fields in the request body while Get method sends the fields as url parameters.-->
         <form id="form" onsubmit="return checkForm();">
             <div>
-                <label for="name">Create a To Do Item</label>
+                <label for="name">To Do Item</label>
                 <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
             </div>
             <div>
@@ -26,66 +26,46 @@
                 <input type="submit" id="submit" value="Create">
             </div>
         </form>
-        <script>
-            const titleInput=document.getElementById('title');
-            const descInput=document.getElementById('description');
-            document.getElementById('form').onsubmit=function(e){
-                    e.preventDefault();
-                    document.getElementById('empty').className="hidden";
-                    const desc = descInput.value;
-                    const title = titleInput.value;
-                    descInput.value='';
-                    titleInput.value='';
-                    
-                    fetch('/create-todo',{
-                        method:'POST',
-                        body:JSON.stringify({
-                            'title':title,
-                            'description':desc
-                        }),
-                        headers:{
-                            'Content-Type':'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(jsonResponse => {
-                        console.log(jsonResponse);
-                        const liItem=document.createElement('LI');
-                        liItem.innerHTML=jsonResponse['title'];
-                        document.getElementById('todos').appendChild(liItem);
-                        document.getElementById('error').className="hidden";
-                    })
-                    .catch(function(){
-                        document.getElementById('error').className="";
-                    })
-                }
-        </script>
-        <script>
-            const form = document.getElementById('form');
-            if (!form.addEventListener) {
-                form.attachEvent("onsubmit", checkForm);
-            }
-            else {
-                form.addEventListener("submit", checkForm, false);
-            }
-            function checkForm(e) { 
-                if(document.getElementById('title').value.length == 0) {
-                    e.preventDefault();
-                    document.getElementById('empty').className="";
-                    return false;
-                }
-                else {
-                    document.getElementById('empty').className="hidden";
-                    return true;
-                }
-            }
-        </script>
-        <div id="error" class="hidden">Something went wrong!</div>
-        <div id="empty" class="hidden">No title entered.</div>
+        <div id="result" class="hidden"></div>
         <ul id="todos">
             {% for d in data %}
             <li>{{ d.title }}</li>
             {% endfor %}
         </ul>
+        <script>
+            document.getElementById('form').onsubmit = function (e) {
+                e.preventDefault();
+                const title = document.getElementById('title');
+                const description = document.getElementById('description');
+                document.getElementById('result').className="hidden";
+                if (title && title.value) {
+                    fetch('/create-todo', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            'title': title.value,
+                            'description': description.value
+                        }),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(function (response) {
+                        return response.json();
+                    }).then(function (jsonResponse) {
+                        console.log(jsonResponse);
+                        const liItem = document.createElement('LI');
+                        liItem.innerHTML = jsonResponse['title'];
+                        document.getElementById('todos').appendChild(liItem);
+                        document.getElementById('result').innerHTML="To do item added successfully.";
+                        document.getElementById('result').className="";
+                    }).catch(function () {
+                        document.getElementById('result').innerHTML="Failed to add to do item.";
+                        document.getElementById('result').className="";
+                    })
+                } else {
+                    document.getElementById('result').innerHTML="No title entered.";
+                    document.getElementById('result').className="";
+                }
+            }
+        </script>
     </body>
 </html>
