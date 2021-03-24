@@ -5,6 +5,11 @@
             .hidden {
                 display:none;
             }
+            ul {
+                list-style:none;
+                padding:0;
+                margin:10;
+            }
         </style>
     </head>
 
@@ -13,33 +18,60 @@
     <body>
         <!--"/create-todo" is the name of the route, and post is the route method.
         Post method sends the fields in the request body while Get method sends the fields as url parameters.-->
-        <form id="form" onsubmit="return checkForm();">
-            <div>
-                <label for="name">To Do Item</label>
-                <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
-            </div>
-            <div>
-                <label for="name">Description</label>
-                <input type="text" id='description' name="description">
-            </div>
-            <div>
-                <input type="submit" id="submit" value="Create">
-            </div>
-        </form>
-        <div id="result" class="hidden"></div>
-        <ul id="todos">
-            {% for d in data %}
-            <li>{{ d.title }}</li>
-            {% endfor %}
-        </ul>
+        <div>
+            <h4>To Do List</h4>
+            <form id="form" onsubmit="return checkForm();">
+                <div>
+                    <label for="name">To Do Item</label>
+                    <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
+                </div>
+                <div>
+                    <label for="name">Description</label>
+                    <input type="text" id='description' name="description">
+                </div>
+                <div>
+                    <input type="submit" id="submit" value="Create">
+                </div>
+            </form>
+            <div id="result" class="hidden"></div>
+            <ul id="todos">
+                {% for d in data %}
+                <li><input class="check-completed" data-id="{{ d.id }}" type="checkbox" {% if d.completed %} checked {% endif %} /> {{ d.title }}</li>
+                {% endfor %}
+            </ul>
+        </div>
         <script>
+            const checkboxes = document.querySelectorAll('.check-completed');
+            for (let i = 0; i < checkboxes.length; i++) {
+                const checkbox = checkboxes[i];
+                checkbox.onchange = function(e){
+                    console.log('event',e);
+                    const newCompleted = e.target.checked;
+                    const todoID = e.target.dataset['id'];
+                    fetch('/todo/' + todoID + '/set-completed',{
+                        method:'POST',
+                        body:JSON.stringify({
+                            'completed':newCompleted
+                        }),
+                        headers: {
+                            'Content-Type':'application/json'
+                        }
+                    }).then(function() {
+                        document.getElementById('result').className="hidden";
+                    }).catch(function () {
+                        document.getElementById('result').innerHTML="Something went wrong.";
+                        document.getElementById('result').className="";
+                        checkbox.checked=!newCompleted; 
+                    })
+                }
+            }
             document.getElementById('form').onsubmit = function (e) {
                 e.preventDefault();
                 const title = document.getElementById('title');
                 const description = document.getElementById('description');
                 document.getElementById('result').className="hidden";
                 if (title && title.value) {
-                    fetch('/create-todo', {
+                    fetch('/todo/create', {
                         method: 'POST',
                         body: JSON.stringify({
                             'title': title.value,
@@ -48,17 +80,25 @@
                         headers: {
                             'Content-Type': 'application/json'
                         }
-                    }).then(function (response) {
-                        return response.json();
-                    }).then(function (jsonResponse) {
+                    }).then(response => response.json()
+                    ).then(jsonResponse => {
                         console.log(jsonResponse);
-                        const liItem = document.createElement('LI');
-                        liItem.innerHTML = jsonResponse['title'];
+                        const liItem = document.createElement('li');
+                        const checkbox = document.createElement('input');
+                        checkbox.className='check-completed';
+                        checkbox.type='checkbox';
+                        checkbox.setAttribute('data-id', jsonResponse.id);
+                        liItem.appendChild(checkbox);
+
+                        const text = document.createTextNode(' ' + jsonResponse.title);
+                        liItem.appendChild(text);
+
                         document.getElementById('todos').appendChild(liItem);
+
                         document.getElementById('result').innerHTML="To do item added successfully.";
                         document.getElementById('result').className="";
                     }).catch(function () {
-                        document.getElementById('result').innerHTML="Failed to add to do item.";
+                        document.getElementById('result').innerHTML="Something went wrong.";
                         document.getElementById('result').className="";
                     })
                 } else {
