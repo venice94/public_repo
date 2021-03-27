@@ -1,14 +1,35 @@
 <html>
     <head>
+        <meta http-equiv="refresh" content="60">
         <title>To-Do App</title>
         <style>
             .hidden {
                 display:none;
             }
+            .lists-wrapper, .todos-wrapper {
+                display:inline-block;
+                vertical-align:top;
+            }
             ul {
                 list-style:none;
                 padding:0;
                 margin:10;
+                width:250px;
+            }
+            li {
+                clear:both;
+            }
+            li button {
+                -webkit-appearance: none;
+                border:none;
+                outline:none;
+                color:red;
+                float:right;
+                cursor:pointer;
+                font-size:20px;
+            }
+            br {
+                line-height:0.4;
             }
         </style>
     </head>
@@ -18,29 +39,154 @@
     <body>
         <!--"/create-todo" is the name of the route, and post is the route method.
         Post method sends the fields in the request body while Get method sends the fields as url parameters.-->
+        <h2>My To Do Lists</h2>
         <div>
-            <h4>To Do List</h4>
-            <form id="form" onsubmit="return checkForm();">
-                <div>
-                    <label for="name">To Do Item</label>
-                    <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
-                </div>
-                <div>
-                    <label for="name">Description</label>
-                    <input type="text" id='description' name="description">
-                </div>
-                <div>
-                    <input type="submit" id="submit" value="Create">
-                </div>
-            </form>
-            <div id="result" class="hidden"></div>
-            <ul id="todos">
-                {% for d in data %}
-                <li><input class="check-completed" data-id="{{ d.id }}" type="checkbox" {% if d.completed %} checked {% endif %} /> {{ d.title }}</li>
+            <div id="generic-error" class="hidden">Something went wrong.</div>
+            <ul id="todolists" class="lists-wrapper">
+                <h4>To Do Lists</h4>
+                <form id="newlist-form">
+                    <div>
+                        <label for="name">To Do List *</label><br></br>
+                        <input type="text" id="list-name" name="list-name"> <!--name here is the field name we will call-->
+                    </div>
+                    <div>
+                        <label for="name">Description</label><br></br>
+                        <input type="text" id='list-description' name="list-description">
+                        <br><br><br><br>
+                    </div>
+                    <div>
+                        <input type="submit" id="newlist-submit" value="Create List">
+                    </div>
+                </form>
+                <div id="list-result" class="hidden"></div>
+                {% for list in lists %}
+                <li>
+                    <input class="list-completed" data-id="{{ list.id }}" type="checkbox"/>
+                    <a href='/lists/{{ list.id }}'>{{list.name}}</a>
+                    <button class="delete-list" data-id="{{ list.id }}">&cross;</button>
+                </li>
+                {% endfor %}
+            </ul>
+            <ul id="todos" class="todos-wrapper">
+                <h4>{{ activelist.name }}</h4>
+                <form id="form" data-id="{{ activelist.id }}">
+                    <div>
+                        <label for="name">To Do Item *</label><br></br>
+                        <input type="text" id="title" name="title"> <!--name here is the field name we will call-->
+                    </div>
+                    <div>
+                        <label for="name">Description</label><br></br>
+                        <input type="text" id='description' name="description">
+                        <br><br><br><br>
+                    </div>
+                    <div>
+                        <input type="submit" id="submit" value="Add To Do Item">
+                    </div>
+                </form>
+                <div id="todo-result" class="hidden"></div>
+                {% for todo in todos %}
+                <li><input class="check-completed" data-id="{{ todo.id }}" type="checkbox" {% if todo.completed %} checked {% endif %} />
+                    {{ todo.title }}
+                <button class="delete-button" data-id="{{ todo.id }}">&cross;</button>
+                </li>
                 {% endfor %}
             </ul>
         </div>
         <script>
+            const listcrosses = document.querySelectorAll('.delete-list');
+            for (let i = 0; i < listcrosses.length; i++) {
+                const listcross = listcrosses[i];
+                listcross.onclick = function(e) {
+                    console.log('event',e);
+                    const listID = e.target.dataset['id'];
+                    fetch('/lists/' + listID + '/delete', {
+                        method:'DELETE'
+                    }).then(function() {
+                        const deleted_list = e.target.parentElement;
+                        deleted_list.remove();
+                        window.location.href='/';
+                    }).catch(function() {
+                        document.getElementById('generic-error').className="";
+                    })
+                }
+            }
+            const listcheckboxes = document.querySelectorAll('.list-completed');
+            for (let i = 0; i < listcheckboxes.length; i++) {
+                const listcheckbox = listcheckboxes[i];
+                listcheckbox.onchange = function(e){
+                    if (e.target.checked) {
+                        console.log('event',e);
+                        const listID = e.target.dataset['id'];
+                        fetch('/lists/' + listID + '/set-completed',{
+                            method:'POST'
+                        }).then(function() {
+                            document.getElementById('list-result').className="hidden";
+                            window.location.reload();
+                        }).catch(function () {
+                            document.getElementById('generic-error').className="";
+                            listcheckbox.checked=false; 
+                        })
+                    }
+                }
+            }
+            document.getElementById('newlist-form').onsubmit = function (e) {
+                e.preventDefault();
+                const listname = document.getElementById('list-name');
+                const listdescription = document.getElementById('list-description');
+                document.getElementById('generic-error').className="hidden";
+                if (listname && listname.value) {
+                    fetch('/list/create', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            'listname': listname.value,
+                            'listdescription': listdescription.value
+                        }),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(response => response.json()
+                    ).then(jsonResponse => {
+                        console.log(jsonResponse);
+                        const liItem = document.createElement('li');
+                        const text = document.createTextNode(' ' + jsonResponse.name);
+                        liItem.appendChild(text);
+
+                        const new_button = document.createElement('button');
+                        new_button.className='delete-list';
+                        new_button.setAttribute('data-id', jsonResponse.id);
+                        new_button.innerHTML='&cross;';
+                        liItem.appendChild(new_button);
+
+                        document.getElementById('todolists').appendChild(liItem);
+                        window.location.reload(true);
+                    }).catch(function () {
+                        document.getElementById('generic-error').className="";
+                    })
+                } else {
+                    document.getElementById('list-result').innerHTML="No name entered.";
+                    document.getElementById('list-result').className="";
+                }
+            }
+            const crosses = document.querySelectorAll('.delete-button');
+            for (let i = 0; i < crosses.length; i++) {
+                const cross = crosses[i];
+                cross.onclick = function(e) {
+                    console.log('event',e);
+                    const todoID = e.target.dataset['id'];
+                    fetch('/todo/' + todoID + '/delete', {
+                        method:'DELETE'
+                    }).then(function() {
+                        const deleted_todo = e.target.parentElement;
+                        deleted_todo.remove();
+
+                        document.getElementById('todo-result').innerHTML="To do item deleted.";
+                        document.getElementById('todo-result').className="";
+                        window.location.reload(true);
+                    }).catch(function() {
+                        document.getElementById('generic-error').className="";
+                    })
+                }
+            }
             const checkboxes = document.querySelectorAll('.check-completed');
             for (let i = 0; i < checkboxes.length; i++) {
                 const checkbox = checkboxes[i];
@@ -57,10 +203,9 @@
                             'Content-Type':'application/json'
                         }
                     }).then(function() {
-                        document.getElementById('result').className="hidden";
+                        document.getElementById('todo-result').className="hidden";
                     }).catch(function () {
-                        document.getElementById('result').innerHTML="Something went wrong.";
-                        document.getElementById('result').className="";
+                        document.getElementById('generic-error').className="";
                         checkbox.checked=!newCompleted; 
                     })
                 }
@@ -69,9 +214,11 @@
                 e.preventDefault();
                 const title = document.getElementById('title');
                 const description = document.getElementById('description');
-                document.getElementById('result').className="hidden";
+                const listID = e.target.dataset['id'];
+                document.getElementById('generic-error').className="hidden";
+                document.getElementById('todo-result').className="hidden";
                 if (title && title.value) {
-                    fetch('/todo/create', {
+                    fetch('/lists/' + listID + '/todo/create', {
                         method: 'POST',
                         body: JSON.stringify({
                             'title': title.value,
@@ -83,6 +230,7 @@
                     }).then(response => response.json()
                     ).then(jsonResponse => {
                         console.log(jsonResponse);
+                        document.getElementById('form').reset();
                         const liItem = document.createElement('li');
                         const checkbox = document.createElement('input');
                         checkbox.className='check-completed';
@@ -93,17 +241,22 @@
                         const text = document.createTextNode(' ' + jsonResponse.title);
                         liItem.appendChild(text);
 
+                        const new_button = document.createElement('button');
+                        new_button.className='delete-button';
+                        new_button.setAttribute('data-id', jsonResponse.id);
+                        new_button.innerHTML='&cross;';
+                        liItem.appendChild(new_button);
+
                         document.getElementById('todos').appendChild(liItem);
 
-                        document.getElementById('result').innerHTML="To do item added successfully.";
-                        document.getElementById('result').className="";
+                        document.getElementById('todo-result').innerHTML="To do item added.";
+                        document.getElementById('todo-result').className="";
                     }).catch(function () {
-                        document.getElementById('result').innerHTML="Something went wrong.";
-                        document.getElementById('result').className="";
+                        document.getElementById('generic-error').className="";
                     })
                 } else {
-                    document.getElementById('result').innerHTML="No title entered.";
-                    document.getElementById('result').className="";
+                    document.getElementById('todo-result').innerHTML="No title entered.";
+                    document.getElementById('todo-result').className="";
                 }
             }
         </script>
